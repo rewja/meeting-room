@@ -1,0 +1,353 @@
+import React, { useState, useEffect } from 'react';
+import FormInput from '../../components/FormInput';
+import meetingRoomAPI from '../../services/api';
+import { getCurrentDate, getMinTime, validateBookingDate, getMinBookingDate } from '../../utils/formatDate';
+
+const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [cluster, setCluster] = useState('');
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const roomsData = await meetingRoomAPI.getRooms();
+        setRooms(roomsData);
+      } catch (error) {
+        console.error('Error fetching rooms:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRooms();
+  }, []);
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    
+    // Handle file uploads
+    if (files && files[0]) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: files[0]
+      }));
+    } else {
+      // Map UI fields to backend fields
+      const fieldMapping = {
+        'organizer_name': 'organizer_name',
+        'agenda': 'agenda', 
+        'room_name': 'room_name',
+        'tanggal': 'tanggal',
+        'jamMulai': 'jamMulai',
+        'jamSelesai': 'jamSelesai',
+        'jumlahPeserta': 'jumlahPeserta',
+        'prioritas': 'prioritas',
+        'booking_type': 'booking_type',
+        'kode_project': 'kode_project',
+        'nama_project': 'nama_project',
+        'main_contractor': 'main_contractor',
+        'project_manager': 'project_manager',
+        'no_spk': 'no_spk',
+        'waktu_penyelesaian': 'waktu_penyelesaian',
+        'jenis_pekerjaan': 'jenis_pekerjaan',
+        'uraian_pekerjaan': 'uraian_pekerjaan',
+        'catatan_pekerjaan': 'catatan_pekerjaan'
+      };
+
+      const backendField = fieldMapping[name] || name;
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        // Also update backend fields
+        [backendField]: value
+      }));
+    }
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateStep = () => {
+    const newErrors = {};
+    
+    // Basic meeting info validation - hanya yang penting untuk admin GA
+    if (!formData.organizer_name) newErrors.organizer_name = 'Nama pemohon wajib diisi';
+    if (!formData.agenda) newErrors.agenda = 'Agenda wajib diisi';
+    if (!cluster) newErrors.cluster = 'Pilih lokasi terlebih dahulu';
+    if (!formData.room_name) newErrors.room_name = 'Pilih ruang meeting';
+    if (!formData.tanggal) newErrors.tanggal = 'Tanggal wajib diisi';
+    if (!formData.jamMulai) newErrors.jamMulai = 'Jam mulai wajib diisi';
+    if (!formData.jamSelesai) newErrors.jamSelesai = 'Jam selesai wajib diisi';
+    if (!formData.jumlahPeserta) newErrors.jumlahPeserta = 'Jumlah peserta wajib diisi';
+    if (!formData.prioritas) newErrors.prioritas = 'Prioritas meeting wajib diisi';
+    if (!formData.booking_type) newErrors.booking_type = 'Tipe booking wajib dipilih';
+    
+    
+    // Validate date logic
+    if (formData.tanggal) {
+      const dateValidationError = validateBookingDate(formData.tanggal, formData.jamMulai);
+      if (dateValidationError) {
+        newErrors.tanggal = dateValidationError;
+      }
+    }
+    
+    // Validate time logic
+    if (formData.jamMulai && formData.jamSelesai) {
+      if (formData.jamMulai > formData.jamSelesai) {
+        newErrors.jamSelesai = 'Jam selesai harus setelah atau sama dengan jam mulai';
+      }
+    }
+    
+    // Validate participant count
+    if (formData.jumlahPeserta && formData.room_name) {
+      const selectedRoom = rooms.find(room => room.name === formData.room_name);
+      if (selectedRoom && parseInt(formData.jumlahPeserta) > selectedRoom.capacity) {
+        newErrors.jumlahPeserta = `Jumlah peserta melebihi kapasitas ruang (maksimal ${selectedRoom.capacity} orang)`;
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Check if all required fields are filled
+  const isStepValid = () => {
+    const isValid = formData.organizer_name && formData.agenda && cluster && formData.room_name && 
+           formData.tanggal && formData.jamMulai && formData.jamSelesai && 
+           formData.jumlahPeserta && formData.prioritas && formData.booking_type &&
+           !(formData.jamMulai && formData.jamSelesai && formData.jamMulai > formData.jamSelesai);
+    return isValid;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Form Booking Ruang Meeting</h2>
+        <p className="text-gray-600">Isi informasi dasar untuk booking ruang meeting</p>
+      </div>
+
+      {/* Informasi Dasar Meeting */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-blue-900 mb-4">Informasi Dasar Meeting</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormInput
+            label="Nama Pemohon"
+            name="organizer_name"
+            value={formData.organizer_name}
+            onChange={handleChange}
+            placeholder="Masukkan nama lengkap pemohon"
+            required
+            error={errors.organizer_name}
+          />
+          <FormInput
+            label="Agenda Meeting"
+            name="agenda"
+            value={formData.agenda}
+            onChange={handleChange}
+            placeholder="Masukkan agenda meeting"
+            required
+            error={errors.agenda}
+          />
+          {/* Lokasi/Cluster */}
+          <FormInput
+            label="Lokasi"
+            type="select"
+            name="cluster"
+            value={cluster}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCluster(value);
+              // Reset room_name sesuai cluster
+              if (value === '689') {
+                setFormData(prev => ({ ...prev, room_name: 'R. Meeting 689' }));
+              } else if (value === '04') {
+                setFormData(prev => ({ ...prev, room_name: 'R. Meeting 04' }));
+              } else if (value === '08') {
+                setFormData(prev => ({ ...prev, room_name: '' }));
+              } else {
+                setFormData(prev => ({ ...prev, room_name: '' }));
+              }
+            }}
+            options={[
+              { value: '', label: 'Pilih Lokasi' },
+              { value: '08', label: '08' },
+              { value: '689', label: '689' },
+              { value: '04', label: '04' }
+            ]}
+            required
+            error={errors.cluster}
+            disabled={loading}
+          />
+          {/* Pilih Ruang sesuai cluster */}
+          {cluster === '08' && (
+            <FormInput
+              label="Pilih Ruang Meeting"
+              type="select"
+              name="room_name"
+              value={formData.room_name}
+              onChange={handleChange}
+              options={[
+                { value: '', label: 'Pilih Ruang Meeting' },
+                { value: 'R. Meeting 1', label: 'R. Meeting 1' },
+                { value: 'R. Meeting 2', label: 'R. Meeting 2' },
+                { value: 'R. Meeting Command Centre', label: 'R. Meeting Command Centre' },
+                { value: 'Kantin VIP', label: 'Kantin VIP' }
+              ]}
+              required
+              error={errors.room_name}
+              disabled={loading}
+            />
+          )}
+          {(cluster === '689' || cluster === '04') && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ruang Terpilih</label>
+              <div className="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-700 border-gray-300">
+                {cluster === '689' ? 'R. Meeting 689' : 'R. Meeting 04'}
+              </div>
+            </div>
+          )}
+          <FormInput
+            label="Tanggal"
+            type="date"
+            name="tanggal"
+            value={formData.tanggal}
+            onChange={handleChange}
+            required
+            error={errors.tanggal}
+            min={getMinBookingDate()}
+            max={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+          />
+          <FormInput
+            label="Jam Mulai"
+            type="time"
+            name="jamMulai"
+            value={formData.jamMulai}
+            onChange={handleChange}
+            required
+            error={errors.jamMulai}
+            min={formData.tanggal === getMinBookingDate() ? getMinTime() : "08:00"}
+          />
+          <FormInput
+            label="Jam Selesai"
+            type="time"
+            name="jamSelesai"
+            value={formData.jamSelesai}
+            onChange={handleChange}
+            required
+            error={errors.jamSelesai}
+          />
+          <FormInput
+            label="Jumlah Peserta"
+            type="number"
+            name="jumlahPeserta"
+            value={formData.jumlahPeserta}
+            onChange={handleChange}
+            placeholder="Masukkan jumlah peserta"
+            required
+            error={errors.jumlahPeserta}
+          />
+          <FormInput
+            label="Prioritas Meeting"
+            type="select"
+            name="prioritas"
+            value={formData.prioritas}
+            onChange={handleChange}
+            options={[
+              { value: '', label: 'Pilih Prioritas Meeting' },
+              { value: 'reguler', label: 'Reguler' },
+              { value: 'vip', label: 'VIP' }
+            ]}
+            required
+            error={errors.prioritas}
+          />
+          <FormInput
+            label="Tipe Booking"
+            type="select"
+            name="booking_type"
+            value={formData.booking_type || ''}
+            onChange={handleChange}
+            options={[
+              { value: '', label: 'Pilih Tipe Booking' },
+              { value: 'internal', label: 'Internal' },
+              { value: 'external', label: 'Eksternal' }
+            ]}
+            required
+            error={errors.booking_type}
+          />
+          {/* Email & Nomor Telepon dihapus sesuai permintaan */}
+        </div>
+      </div>
+
+
+      {formData.room_name && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="font-medium text-blue-900 mb-2">Informasi Ruang Terpilih</h4>
+          {(() => {
+            const selectedRoom = rooms.find(room => room.name === formData.room_name);
+            return selectedRoom ? (
+              <div className="text-sm text-blue-800">
+                <p><strong>Kapasitas:</strong> {selectedRoom.capacity} orang</p>
+                <p><strong>Lokasi:</strong> {selectedRoom.location}</p>
+                <p><strong>Fasilitas:</strong> {selectedRoom.amenities?.join(', ') || 'Tidak ada'}</p>
+              </div>
+            ) : null;
+          })()}
+        </div>
+      )}
+
+      {/* Progress indicator */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700">Progress Step 1</span>
+          <span className="text-sm text-gray-500">
+            {isStepValid() ? '✓ Siap lanjut' : 'Lengkapi semua field'}
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className={`h-2 rounded-full transition-all duration-300 ${
+              isStepValid() ? 'bg-green-500' : 'bg-yellow-500'
+            }`}
+            style={{ 
+              width: `${Math.round(([
+                formData.organizer_name,
+                formData.agenda,
+                cluster,
+                formData.room_name,
+                formData.tanggal,
+                formData.jamMulai,
+                formData.jamSelesai,
+                formData.jumlahPeserta,
+                formData.prioritas,
+                formData.booking_type
+              ].filter(Boolean).length / 10) * 100)}%` 
+            }}
+          ></div>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {[
+            formData.organizer_name,
+            formData.agenda,
+            cluster,
+            formData.room_name,
+            formData.tanggal,
+            formData.jamMulai,
+            formData.jamSelesai,
+            formData.jumlahPeserta,
+            formData.prioritas,
+            formData.booking_type
+          ].filter(Boolean).length} dari 10 field terisi
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Step1InfoDasar;
+

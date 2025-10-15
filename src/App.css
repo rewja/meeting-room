@@ -1,0 +1,17 @@
+/* Custom styles for Roomify app */
+.roomify-gradient {
+  background: linear-gradient(135deg, #800000 0%, #001f3f 100%);
+}
+
+.roomify-shadow {
+  box-shadow: 0 4px 6px -1px rgba(128, 0, 0, 0.1), 0 2px 4px -1px rgba(128, 0, 0, 0.06);
+}
+
+.roomify-hover {
+  transition: all 0.3s ease;
+}
+
+.roomify-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -3px rgba(128, 0, 0, 0.1), 0 4px 6px -2px rgba(128, 0, 0, 0.05);
+}
