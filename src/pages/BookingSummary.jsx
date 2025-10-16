@@ -112,30 +112,28 @@ const BookingSummary = () => {
           </div>
         </div>
 
-        {bookingData.special_requirements && (
-          <div className="mt-6 border-t border-gray-300 pt-4">
-            <label className="block text-sm font-medium text-gray-700">Kebutuhan Khusus</label>
-            <p className="mt-1 text-sm text-gray-900">{bookingData.special_requirements}</p>
-          </div>
-        )}
 
         {/* Tampilkan detail kebutuhan tambahan jika ada */}
-        {(bookingData.kebutuhan?.length > 0 || bookingData.makanan_detail || bookingData.minuman_detail) && (
+        {(bookingData.kebutuhan?.length > 0 || bookingData.makanan_detail || bookingData.minuman_detail || bookingData.lainnya_detail) && (
           <div className="mt-6">
             <div className="bg-gray-50 border border-gray-300 rounded-md">
               <div className="px-4 py-2 border-b border-gray-300 text-sm font-semibold text-gray-900">Detail Tambahan</div>
-              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
                   <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider">Kebutuhan Tambahan</label>
-              <p className="mt-1 text-sm text-gray-900">{(bookingData.kebutuhan || []).join(', ') || '-'}</p>
-            </div>
-            <div>
+                  <p className="mt-1 text-sm text-gray-900">{(bookingData.kebutuhan || []).join(', ') || '-'}</p>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider">Detail Makanan</label>
-              <p className="mt-1 text-sm text-gray-900">{bookingData.makanan_detail || '-'}</p>
-            </div>
-            <div>
+                  <p className="mt-1 text-sm text-gray-900">{bookingData.makanan_detail || '-'}</p>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider">Detail Minuman</label>
-              <p className="mt-1 text-sm text-gray-900">{bookingData.minuman_detail || '-'}</p>
+                  <p className="mt-1 text-sm text-gray-900">{bookingData.minuman_detail || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 uppercase tracking-wider">Kebutuhan Lainnya</label>
+                  <p className="mt-1 text-sm text-gray-900">{bookingData.lainnya_detail || '-'}</p>
                 </div>
               </div>
             </div>

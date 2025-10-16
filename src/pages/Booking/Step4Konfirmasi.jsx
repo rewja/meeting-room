@@ -130,11 +130,11 @@ const Step4Konfirmasi = ({ formData, setFormData, errors, setErrors }) => {
               })}
             </div>
             
-            {/* Detail Makanan dan Minuman */}
-            {(formData.kebutuhan?.includes('makanan') || formData.kebutuhan?.includes('minuman')) && (
+            {/* Detail Tambahan */}
+            {(formData.kebutuhan?.includes('makanan') || formData.kebutuhan?.includes('minuman') || formData.lainnya_detail) && (
               <div className="mt-4 bg-gray-50 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Detail Tambahan</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {formData.kebutuhan?.includes('makanan') && formData.makanan_detail && (
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Detail Makanan</label>
@@ -147,18 +147,18 @@ const Step4Konfirmasi = ({ formData, setFormData, errors, setErrors }) => {
                       <p className="text-sm text-gray-900 bg-white rounded p-2 border">{formData.minuman_detail}</p>
                     </div>
                   )}
+                  {formData.lainnya_detail && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Kebutuhan Lainnya</label>
+                      <p className="text-sm text-gray-900 bg-white rounded p-2 border">{formData.lainnya_detail}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {formData.lainnya_detail && (
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Kebutuhan Lainnya</label>
-            <p className="text-sm text-gray-900 bg-gray-50 rounded-lg p-3">{formData.lainnya_detail}</p>
-          </div>
-        )}
       </div>
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
