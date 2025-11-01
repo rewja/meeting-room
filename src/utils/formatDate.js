@@ -46,7 +46,7 @@ export const validateBookingDate = (dateString, timeString = null) => {
   
   // Check if date is weekend (Saturday = 6, Sunday = 0)
   if (selectedDate.getDay() === 0 || selectedDate.getDay() === 6) {
-    return 'Booking hanya tersedia untuk hari kerja (Senin-Jumat)';
+    return 'Booking hanya tersedia untuk hari kerja (Senin-Jumat). Weekend tidak dapat dibooking.';
   }
   
   // Check if date is too far in the future (30 days limit)

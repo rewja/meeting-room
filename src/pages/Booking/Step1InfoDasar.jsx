@@ -32,6 +32,23 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
         [name]: files[0]
       }));
     } else {
+      // Real-time validation for date field to show weekend error immediately
+      if (name === 'tanggal' && value) {
+        const dateValidationError = validateBookingDate(value, formData.jamMulai);
+        if (dateValidationError) {
+          setErrors(prev => ({
+            ...prev,
+            tanggal: dateValidationError
+          }));
+        } else {
+          // Clear tanggal error if valid
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors.tanggal;
+            return newErrors;
+          });
+        }
+      }
       // Map UI fields to backend fields
       const fieldMapping = {
         'organizer_name': 'organizer_name',
@@ -64,8 +81,8 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
       }));
     }
     
-    // Clear error when user starts typing
-    if (errors[name]) {
+    // Clear error when user starts typing (except for tanggal which has real-time validation)
+    if (errors[name] && name !== 'tanggal') {
       setErrors(prev => ({
         ...prev,
         [name]: ''
@@ -133,9 +150,9 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
       </div>
 
       {/* Informasi Dasar Meeting */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-4">Informasi Dasar Meeting</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 md:p-8">
+        <h3 className="text-lg font-semibold text-blue-900 mb-6">Informasi Dasar Meeting</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormInput
             label="Nama Pemohon"
             name="organizer_name"
@@ -205,24 +222,33 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
             />
           )}
           {(cluster === '689' || cluster === '04') && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ruang Terpilih</label>
-              <div className="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-700 border-gray-300">
+            <div className="mb-6">
+              <label className="block text-base font-semibold text-gray-800 mb-2">
+                Ruang Terpilih
+              </label>
+              <div className="w-full px-4 py-3 border-2 rounded-lg bg-gray-50 text-gray-700 border-gray-300">
                 {cluster === '689' ? 'R. Meeting 689' : 'R. Meeting 04'}
               </div>
             </div>
           )}
-          <FormInput
-            label="Tanggal"
-            type="date"
-            name="tanggal"
-            value={formData.tanggal}
-            onChange={handleChange}
-            required
-            error={errors.tanggal}
-            min={getMinBookingDate()}
-            max={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-          />
+          <div className="md:col-span-2">
+            <FormInput
+              label="Tanggal"
+              type="date"
+              name="tanggal"
+              value={formData.tanggal}
+              onChange={handleChange}
+              required
+              error={errors.tanggal}
+              min={getMinBookingDate()}
+              max={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+            />
+            {!errors.tanggal && !formData.tanggal && (
+              <p className="text-sm text-gray-500 mt-1 mb-2">
+                ⓘ Booking hanya tersedia untuk hari kerja (Senin-Jumat). Weekend tidak dapat dibooking.
+              </p>
+            )}
+          </div>
           <FormInput
             label="Jam Mulai"
             type="time"
@@ -286,8 +312,8 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
 
 
       {formData.room_name && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-medium text-blue-900 mb-2">Informasi Ruang Terpilih</h4>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h4 className="font-semibold text-blue-900 mb-4">Informasi Ruang Terpilih</h4>
           {(() => {
             const selectedRoom = rooms.find(room => room.name === formData.room_name);
             return selectedRoom ? (
@@ -302,7 +328,7 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
       )}
 
       {/* Progress indicator */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700">Progress Step 1</span>
           <span className="text-sm text-gray-500">

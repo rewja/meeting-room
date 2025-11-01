@@ -31,82 +31,105 @@ const BookingSummary = () => {
 
   if (!bookingData) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Booking Summary</h1>
-          <p className="text-gray-600 mb-6">Tidak ada data booking yang ditemukan.</p>
-          <Link
-            to="/booking"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#800000] hover:bg-[#a00000] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800000] transition-colors"
-          >
-            Buat Booking Baru
-          </Link>
+      <div className="min-h-screen bg-gray-900 relative overflow-hidden py-8 md:py-12">
+        {/* Professional Meeting Room Background Image */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80"
+            alt="Professional Meeting Room"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-slate-800/80 to-slate-900/85"></div>
+        </div>
+        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl p-8 md:p-10 border border-white/20">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Booking Summary</h1>
+            <p className="text-gray-600 mb-6">Tidak ada data booking yang ditemukan.</p>
+            <Link
+              to="/booking"
+              className="inline-flex items-center px-6 py-3 rounded-lg text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+            >
+              Buat Booking Baru
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="text-center mb-6">
-        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-          <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Booking Berhasil!</h1>
-        <p className="text-gray-600 text-sm">Booking ruang meeting Anda telah berhasil dibuat</p>
+    <div className="min-h-screen bg-gray-900 relative overflow-hidden py-8 md:py-12">
+      {/* Professional Meeting Room Background Image - Same as Hero */}
+      <div className="absolute inset-0">
+        <img 
+          src="https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80"
+          alt="Professional Meeting Room"
+          className="w-full h-full object-cover"
+        />
+        {/* Dark overlay untuk readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-slate-800/80 to-slate-900/85"></div>
       </div>
 
-      {/* Container Utama */}
-      <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 max-w-3xl mx-auto">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-500 mb-6 shadow-lg">
+            <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">Booking Berhasil!</h1>
+          <p className="text-xl text-gray-300">Booking ruang meeting Anda telah berhasil dibuat</p>
+        </div>
+
+        {/* Container Utama */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 lg:p-10 border border-white/20">
         {/* Header Section */}
-        <h2 className="text-lg font-semibold text-gray-900 pb-2 mb-4 border-b border-gray-300">Detail Booking</h2>
+        <h2 className="text-xl font-bold text-gray-900 pb-3 mb-6 border-b border-gray-200">Detail Booking</h2>
         
         {/* Informasi Umum - Grid 2 Kolom */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Kolom kiri */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-              <span className="text-gray-600 font-medium">Booking ID</span>
-              <span className="text-gray-900 font-mono">#{bookingData.booking_id || bookingData.id}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <span className="text-gray-600 font-semibold">Booking ID</span>
+              <span className="text-gray-900 font-mono font-bold">#{bookingData.booking_id || bookingData.id}</span>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-              <span className="text-gray-600 font-medium">Ruang Meeting</span>
-              <span className="text-gray-900">{bookingData.room_name}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <span className="text-gray-600 font-semibold">Ruang Meeting</span>
+              <span className="text-gray-900 font-medium">{bookingData.room_name}</span>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-              <span className="text-gray-600 font-medium">Agenda</span>
-              <span className="text-gray-900">{bookingData.agenda}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <span className="text-gray-600 font-semibold">Agenda</span>
+              <span className="text-gray-900 font-medium">{bookingData.agenda}</span>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-              <span className="text-gray-600 font-medium">Tanggal</span>
-              <span className="text-gray-900">{new Date(bookingData.start_time).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <span className="text-gray-600 font-semibold">Tanggal</span>
+              <span className="text-gray-900 font-medium">{new Date(bookingData.start_time).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
           </div>
           
           {/* Kolom kanan */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-              <span className="text-gray-600 font-medium">Waktu</span>
-              <span className="text-gray-900">{new Date(bookingData.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - {new Date(bookingData.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <span className="text-gray-600 font-semibold">Waktu</span>
+              <span className="text-gray-900 font-medium">{new Date(bookingData.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - {new Date(bookingData.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-              <span className="text-gray-600 font-medium">Nama Pemohon</span>
-              <span className="text-gray-900">{bookingData.organizer_name}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <span className="text-gray-600 font-semibold">Nama Pemohon</span>
+              <span className="text-gray-900 font-medium">{bookingData.organizer_name}</span>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-              <span className="text-gray-600 font-medium">Status</span>
-              <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">{bookingData.status === 'scheduled' ? 'Terjadwal' : bookingData.status}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <span className="text-gray-600 font-semibold">Status</span>
+              <span className="inline-flex px-3 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700">{bookingData.status === 'scheduled' ? 'Terjadwal' : bookingData.status}</span>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-              <span className="text-gray-600 font-medium">Tipe Booking</span>
-              <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">{bookingData.booking_type === 'internal' ? 'Internal' : 'Eksternal'}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <span className="text-gray-600 font-semibold">Tipe Booking</span>
+              <span className="inline-flex px-3 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700">{bookingData.booking_type === 'internal' ? 'Internal' : 'Eksternal'}</span>
             </div>
             {bookingData.prioritas && (
-              <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm">
-                <span className="text-gray-600 font-medium">Prioritas</span>
-                <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">{bookingData.prioritas === 'vip' ? 'VIP' : 'Reguler'}</span>
+              <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                <span className="text-gray-600 font-semibold">Prioritas</span>
+                <span className="inline-flex px-3 py-1 rounded-lg text-xs font-semibold bg-purple-100 text-purple-700">{bookingData.prioritas === 'vip' ? 'VIP' : 'Reguler'}</span>
               </div>
             )}
           </div>
@@ -152,7 +175,7 @@ const BookingSummary = () => {
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center px-3 py-2 rounded text-white text-sm bg-[#b71c1c] hover:bg-[#a31616]"
+                    className="inline-flex items-center px-4 py-2 rounded-lg text-white text-sm font-semibold bg-blue-600 hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
                   >
                     Lihat SPK
                   </a>
@@ -177,22 +200,6 @@ const BookingSummary = () => {
           </div>
         )}
 
-        {/* Footer Tombol Aksi */}
-        <div className="mt-6 pt-3 border-t border-gray-300">
-          <div className="flex justify-center gap-4">
-            <Link
-              to="/"
-              className="inline-flex justify-center items-center px-6 py-3 rounded text-white bg-[#b71c1c] hover:bg-[#a31616]"
-            >
-              Kembali ke Beranda
-            </Link>
-            <Link
-              to="/schedule"
-              className="inline-flex justify-center items-center px-6 py-3 rounded text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
-            >
-              Lihat Jadwal
-            </Link>
-          </div>
         </div>
       </div>
     </div>

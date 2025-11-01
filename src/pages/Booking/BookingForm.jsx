@@ -292,63 +292,75 @@ const BookingForm = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Form Booking Ruang Meeting</h1>
-        <p className="text-gray-600">Isi form berikut untuk memesan ruang meeting</p>
+    <div className="min-h-screen bg-gray-900 relative overflow-hidden py-8 md:py-12">
+      {/* Professional Meeting Room Background Image - Same as Hero */}
+      <div className="absolute inset-0">
+        <img 
+          src="https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80"
+          alt="Professional Meeting Room"
+          className="w-full h-full object-cover"
+        />
+        {/* Dark overlay untuk readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-slate-800/80 to-slate-900/85"></div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-8">
-        <Stepper currentStep={currentStep} steps={steps} />
-        
-        <div className="mt-8">
-          {renderStep()}
-          
-          {errors.submit && (
-            <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {errors.submit}
-            </div>
-          )}
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-6 md:mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2 md:mb-3">
+            Form Booking Ruang Meeting
+          </h1>
+          <p className="text-lg md:text-xl text-gray-300">Isi form berikut untuk memesan ruang meeting</p>
         </div>
 
-        <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
-          <button
-            onClick={prevStep}
-            disabled={currentStep === 1}
-            className={`px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800000] ${
-              currentStep === 1 ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            Sebelumnya
-          </button>
-
-          <div className="flex space-x-4">
-            {currentStep < steps.length ? (
-              <button
-                onClick={nextStep}
-                disabled={!isCurrentStepValid()}
-                className={`px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800000] transition-colors ${
-                  isCurrentStepValid()
-                    ? 'bg-[#800000] text-white hover:bg-[#a00000]'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                Selanjutnya
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                // Terms checkbox removed; enable based on step validity
-                disabled={false}
-                className={`px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800000] transition-colors ${
-                  true
-                    ? 'bg-[#800000] text-white hover:bg-[#a00000]'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                Kirim Booking
-              </button>
+        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 lg:p-12 border border-white/20">
+          <Stepper currentStep={currentStep} steps={steps} />
+          
+          <div className="mt-8">
+            {renderStep()}
+            
+            {errors.submit && (
+              <div className="mt-4 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg">
+                {errors.submit}
+              </div>
             )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8 md:mt-10 pt-6 md:pt-8 border-t border-gray-200">
+            <button
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className={`px-6 md:px-8 py-3 border rounded-lg font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                currentStep === 1
+                  ? 'opacity-50 cursor-not-allowed border-gray-300 text-gray-400'
+                  : 'border-slate-400 text-slate-700 hover:bg-slate-700 hover:text-white hover:shadow-md'
+              }`}
+            >
+              Sebelumnya
+            </button>
+
+            <div className="flex space-x-4">
+              {currentStep < steps.length ? (
+                <button
+                  onClick={nextStep}
+                  disabled={!isCurrentStepValid()}
+                  className={`w-full sm:w-auto px-6 md:px-8 py-3 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all ${
+                    isCurrentStepValid()
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Selanjutnya
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={false}
+                  className="w-full sm:w-auto px-6 md:px-8 py-3 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all hover:shadow-lg"
+                >
+                  Kirim Booking
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
