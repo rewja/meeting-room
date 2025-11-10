@@ -5,6 +5,7 @@ import Step1InfoDasar from './Step1InfoDasar';
 import Step3Kebutuhan from './Step3Kebutuhan';
 import Step4Konfirmasi from './Step4Konfirmasi';
 import meetingRoomAPI from '../../services/api';
+import { validateBookingTime, addBufferTime } from '../../utils/formatDate';
 
 const BookingForm = () => {
   const navigate = useNavigate();
@@ -75,8 +76,23 @@ const BookingForm = () => {
             !formData.prioritas || !formData.booking_type) {
           return false;
         }
-        if (formData.jamMulai && formData.jamSelesai && formData.jamMulai >= formData.jamSelesai) {
-          return false;
+        // Validate time logic - jam mulai dengan aturan 45 menit buffer
+        if (formData.tanggal && formData.jamMulai) {
+          const timeError = validateBookingTime(formData.tanggal, formData.jamMulai);
+          if (timeError) {
+            return false;
+          }
+        }
+        
+        // Validate time logic - jam selesai harus lebih besar dari jam mulai
+        if (formData.jamMulai && formData.jamSelesai) {
+          const [h1, m1] = formData.jamMulai.split(':').map(Number);
+          const [h2, m2] = formData.jamSelesai.split(':').map(Number);
+          const minutes1 = (h1 || 0) * 60 + (m1 || 0);
+          const minutes2 = (h2 || 0) * 60 + (m2 || 0);
+          if (minutes2 <= minutes1) {
+            return false;
+          }
         }
         return true;
         
@@ -121,9 +137,21 @@ const BookingForm = () => {
         if (!formData.jamSelesai) newErrors.jamSelesai = 'Jam selesai wajib diisi';
         if (!formData.jumlahPeserta) newErrors.jumlahPeserta = 'Jumlah peserta wajib diisi';
         
-        // Validate time logic
+        // Validate time logic - jam mulai dengan aturan 45 menit buffer
+        if (formData.tanggal && formData.jamMulai) {
+          const timeError = validateBookingTime(formData.tanggal, formData.jamMulai);
+          if (timeError) {
+            newErrors.jamMulai = timeError;
+          }
+        }
+        
+        // Validate time logic - jam selesai harus lebih besar dari jam mulai
         if (formData.jamMulai && formData.jamSelesai) {
-          if (formData.jamMulai >= formData.jamSelesai) {
+          const [h1, m1] = formData.jamMulai.split(':').map(Number);
+          const [h2, m2] = formData.jamSelesai.split(':').map(Number);
+          const minutes1 = (h1 || 0) * 60 + (m1 || 0);
+          const minutes2 = (h2 || 0) * 60 + (m2 || 0);
+          if (minutes2 <= minutes1) {
             newErrors.jamSelesai = 'Jam selesai harus lebih dari jam mulai';
           }
         }
@@ -190,7 +218,14 @@ const BookingForm = () => {
         const startTime = formData.start_time || formatDateTime(formData.tanggal, formData.jamMulai);
         const endTime = formData.end_time || formatDateTime(formData.tanggal, formData.jamSelesai);
 
-        // Client-side guard: start must be >= now and end > start
+        // Validate time with new rules: 45 minutes buffer for same-day bookings
+        const timeError = validateBookingTime(formData.tanggal, formData.jamMulai);
+        if (timeError) {
+          setErrors({ submit: timeError });
+          return;
+        }
+
+        // Client-side guard: end > start
         const now = new Date();
         const toDateObj = (s) => {
           // s like 'YYYY-MM-DD HH:mm:ss' local
@@ -201,13 +236,43 @@ const BookingForm = () => {
         };
         const startDate = toDateObj(startTime);
         const endDate = toDateObj(endTime);
-        if (startDate < now) {
-          setErrors({ submit: 'Waktu mulai harus setelah waktu sekarang' });
-          return;
-        }
+        
         if (!(endDate > startDate)) {
           setErrors({ submit: 'Waktu selesai harus lebih besar dari waktu mulai' });
           return;
+        }
+
+        // Check for conflicts with existing bookings (with 45 minutes buffer)
+        try {
+          // Get all existing bookings for this room
+          const existingBookings = await meetingRoomAPI.getBookings({ room_name: formData.room_name });
+          
+          // Check if new booking conflicts with existing bookings (considering buffer)
+          const hasConflict = existingBookings.some(booking => {
+            if (booking.status === 'canceled') return false;
+            
+            const existingStart = toDateObj(booking.start_time);
+            const existingEnd = toDateObj(booking.end_time);
+            // Add 45 minutes buffer after existing meeting ends
+            const existingEndWithBuffer = new Date(existingEnd.getTime() + 45 * 60 * 1000);
+            
+            // Check for overlap: new booking overlaps with existing booking + buffer
+            const overlaps = (
+              (startDate >= existingStart && startDate < existingEndWithBuffer) ||
+              (endDate > existingStart && endDate <= existingEndWithBuffer) ||
+              (startDate <= existingStart && endDate >= existingEndWithBuffer)
+            );
+            
+            return overlaps;
+          });
+          
+          if (hasConflict) {
+            setErrors({ submit: 'Waktu booking bentrok dengan jadwal meeting lain. Silakan pilih waktu lain.' });
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking availability:', error);
+          // Continue with booking if availability check fails (backend will handle it)
         }
 
         // Prepare data for backend

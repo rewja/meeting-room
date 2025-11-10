@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import FormInput from '../../components/FormInput';
 import meetingRoomAPI from '../../services/api';
-import { getCurrentDate, getMinTime, validateBookingDate, getMinBookingDate } from '../../utils/formatDate';
+import { getCurrentDate, getMinTime, validateBookingDate, getMinBookingDate, compareTime, validateBookingTime, getMinBookingTime } from '../../utils/formatDate';
 
 const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
   const [rooms, setRooms] = useState([]);
@@ -48,6 +48,63 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
             return newErrors;
           });
         }
+        
+        // Validasi ulang jamMulai saat tanggal berubah (untuk aturan 45 menit)
+        if (formData.jamMulai) {
+          const timeError = validateBookingTime(value, formData.jamMulai);
+          if (timeError) {
+            setErrors(prev => ({
+              ...prev,
+              jamMulai: timeError
+            }));
+          } else {
+            setErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors.jamMulai;
+              return newErrors;
+            });
+          }
+        }
+      }
+      
+      // Real-time validation for time fields
+      if ((name === 'jamMulai' || name === 'jamSelesai') && value) {
+        const jamMulai = name === 'jamMulai' ? value : formData.jamMulai;
+        const jamSelesai = name === 'jamSelesai' ? value : formData.jamSelesai;
+        
+        // Validate jamMulai with 45 minutes buffer rule
+        if (name === 'jamMulai' && formData.tanggal && jamMulai) {
+          const timeError = validateBookingTime(formData.tanggal, jamMulai);
+          if (timeError) {
+            setErrors(prev => ({
+              ...prev,
+              jamMulai: timeError
+            }));
+          } else {
+            setErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors.jamMulai;
+              return newErrors;
+            });
+          }
+        }
+        
+        // Validate jam selesai > jam mulai
+        if (jamMulai && jamSelesai) {
+          if (compareTime(jamSelesai, jamMulai) <= 0) {
+            setErrors(prev => ({
+              ...prev,
+              jamSelesai: 'Jam selesai harus lebih dari jam mulai'
+            }));
+          } else {
+            // Clear jamSelesai error if valid
+            setErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors.jamSelesai;
+              return newErrors;
+            });
+          }
+        }
       }
       // Map UI fields to backend fields
       const fieldMapping = {
@@ -81,8 +138,8 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
       }));
     }
     
-    // Clear error when user starts typing (except for tanggal which has real-time validation)
-    if (errors[name] && name !== 'tanggal') {
+    // Clear error when user starts typing (except for tanggal, jamMulai, jamSelesai which have real-time validation)
+    if (errors[name] && name !== 'tanggal' && name !== 'jamMulai' && name !== 'jamSelesai') {
       setErrors(prev => ({
         ...prev,
         [name]: ''
@@ -114,10 +171,18 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
       }
     }
     
-    // Validate time logic
+    // Validate time logic - jam mulai dengan aturan 45 menit buffer
+    if (formData.tanggal && formData.jamMulai) {
+      const timeError = validateBookingTime(formData.tanggal, formData.jamMulai);
+      if (timeError) {
+        newErrors.jamMulai = timeError;
+      }
+    }
+    
+    // Validate time logic - jam selesai harus lebih besar dari jam mulai
     if (formData.jamMulai && formData.jamSelesai) {
-      if (formData.jamMulai > formData.jamSelesai) {
-        newErrors.jamSelesai = 'Jam selesai harus setelah atau sama dengan jam mulai';
+      if (compareTime(formData.jamSelesai, formData.jamMulai) <= 0) {
+        newErrors.jamSelesai = 'Jam selesai harus lebih dari jam mulai';
       }
     }
     
@@ -135,11 +200,17 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
 
   // Check if all required fields are filled
   const isStepValid = () => {
-    const isValid = formData.organizer_name && formData.agenda && cluster && formData.room_name && 
+    const allFieldsFilled = formData.organizer_name && formData.agenda && cluster && formData.room_name && 
            formData.tanggal && formData.jamMulai && formData.jamSelesai && 
-           formData.jumlahPeserta && formData.prioritas && formData.booking_type &&
-           !(formData.jamMulai && formData.jamSelesai && formData.jamMulai > formData.jamSelesai);
-    return isValid;
+           formData.jumlahPeserta && formData.prioritas && formData.booking_type;
+    
+    // Validate time logic - jam mulai dengan aturan 45 menit buffer
+    const timeStartValid = !formData.tanggal || !formData.jamMulai || !validateBookingTime(formData.tanggal, formData.jamMulai);
+    
+    // Validate time logic - jam selesai harus lebih besar dari jam mulai
+    const timeEndValid = !formData.jamMulai || !formData.jamSelesai || compareTime(formData.jamSelesai, formData.jamMulai) > 0;
+    
+    return allFieldsFilled && timeStartValid && timeEndValid;
   };
 
   return (
@@ -245,7 +316,7 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
             />
             {!errors.tanggal && !formData.tanggal && (
               <p className="text-sm text-gray-500 mt-1 mb-2">
-                ⓘ Booking hanya tersedia untuk hari kerja (Senin-Jumat). Weekend tidak dapat dibooking.
+                ⓘ Booking hanya tersedia untuk hari kerja (Senin-Jumat). Weekend tidak dapat dibooking. Untuk booking hari ini, waktu mulai minimal 45 menit dari sekarang.
               </p>
             )}
           </div>
@@ -257,7 +328,7 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
             onChange={handleChange}
             required
             error={errors.jamMulai}
-            min={formData.tanggal === getMinBookingDate() ? getMinTime() : "08:00"}
+            min={formData.tanggal ? getMinBookingTime(formData.tanggal) : "08:00"}
           />
           <FormInput
             label="Jam Selesai"
@@ -311,21 +382,19 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
       </div>
 
 
-      {formData.room_name && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h4 className="font-semibold text-blue-900 mb-4">Informasi Ruang Terpilih</h4>
-          {(() => {
-            const selectedRoom = rooms.find(room => room.name === formData.room_name);
-            return selectedRoom ? (
-              <div className="text-sm text-blue-800">
-                <p><strong>Kapasitas:</strong> {selectedRoom.capacity} orang</p>
-                <p><strong>Lokasi:</strong> {selectedRoom.location}</p>
-                <p><strong>Fasilitas:</strong> {selectedRoom.amenities?.join(', ') || 'Tidak ada'}</p>
-              </div>
-            ) : null;
-          })()}
-        </div>
-      )}
+      {(() => {
+        const selectedRoom = formData.room_name ? rooms.find(room => room.name === formData.room_name) : null;
+        return selectedRoom ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h4 className="font-semibold text-blue-900 mb-4">Informasi Ruang Terpilih</h4>
+            <div className="text-sm text-blue-800">
+              <p><strong>Kapasitas:</strong> {selectedRoom.capacity} orang</p>
+              <p><strong>Lokasi:</strong> {selectedRoom.location}</p>
+              <p><strong>Fasilitas:</strong> {selectedRoom.amenities?.join(', ') || 'Tidak ada'}</p>
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {/* Progress indicator */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
