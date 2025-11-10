@@ -5,7 +5,7 @@ import Step1InfoDasar from './Step1InfoDasar';
 import Step3Kebutuhan from './Step3Kebutuhan';
 import Step4Konfirmasi from './Step4Konfirmasi';
 import meetingRoomAPI from '../../services/api';
-import { validateBookingTime, addBufferTime } from '../../utils/formatDate';
+import { checkBookingConflict, validateBookingTime } from '../../utils/formatDate';
 
 const BookingForm = () => {
   const navigate = useNavigate();
@@ -48,6 +48,7 @@ const BookingForm = () => {
     minuman_detail: ''
   });
   const [errors, setErrors] = useState({});
+  const [existingBookings, setExistingBookings] = useState([]);
 
   const steps = [
     'Informasi Dasar',
@@ -76,23 +77,8 @@ const BookingForm = () => {
             !formData.prioritas || !formData.booking_type) {
           return false;
         }
-        // Validate time logic - jam mulai dengan aturan 45 menit buffer
-        if (formData.tanggal && formData.jamMulai) {
-          const timeError = validateBookingTime(formData.tanggal, formData.jamMulai);
-          if (timeError) {
-            return false;
-          }
-        }
-        
-        // Validate time logic - jam selesai harus lebih besar dari jam mulai
-        if (formData.jamMulai && formData.jamSelesai) {
-          const [h1, m1] = formData.jamMulai.split(':').map(Number);
-          const [h2, m2] = formData.jamSelesai.split(':').map(Number);
-          const minutes1 = (h1 || 0) * 60 + (m1 || 0);
-          const minutes2 = (h2 || 0) * 60 + (m2 || 0);
-          if (minutes2 <= minutes1) {
-            return false;
-          }
+        if (formData.jamMulai && formData.jamSelesai && formData.jamMulai >= formData.jamSelesai) {
+          return false;
         }
         return true;
         
@@ -137,21 +123,9 @@ const BookingForm = () => {
         if (!formData.jamSelesai) newErrors.jamSelesai = 'Jam selesai wajib diisi';
         if (!formData.jumlahPeserta) newErrors.jumlahPeserta = 'Jumlah peserta wajib diisi';
         
-        // Validate time logic - jam mulai dengan aturan 45 menit buffer
-        if (formData.tanggal && formData.jamMulai) {
-          const timeError = validateBookingTime(formData.tanggal, formData.jamMulai);
-          if (timeError) {
-            newErrors.jamMulai = timeError;
-          }
-        }
-        
-        // Validate time logic - jam selesai harus lebih besar dari jam mulai
+        // Validate time logic
         if (formData.jamMulai && formData.jamSelesai) {
-          const [h1, m1] = formData.jamMulai.split(':').map(Number);
-          const [h2, m2] = formData.jamSelesai.split(':').map(Number);
-          const minutes1 = (h1 || 0) * 60 + (m1 || 0);
-          const minutes2 = (h2 || 0) * 60 + (m2 || 0);
-          if (minutes2 <= minutes1) {
+          if (formData.jamMulai >= formData.jamSelesai) {
             newErrors.jamSelesai = 'Jam selesai harus lebih dari jam mulai';
           }
         }
@@ -198,6 +172,48 @@ const BookingForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Fetch existing bookings untuk validasi konflik
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (!formData.room_name || !formData.tanggal) {
+        setExistingBookings([]);
+        return;
+      }
+
+      try {
+        // Fetch bookings untuk tanggal tertentu
+        const bookings = await meetingRoomAPI.getBookings({
+          date: formData.tanggal
+        });
+        
+        // Filter bookings untuk ruangan yang sama dan status yang relevan
+        const filteredBookings = (bookings || []).filter(booking => {
+          // Hanya cek booking di ruangan yang sama
+          if (booking.room_name !== formData.room_name) return false;
+          
+          // Skip canceled meetings
+          if (booking.status === 'canceled') return false;
+          
+          // Pastikan booking di tanggal yang sama
+          if (booking.start_time) {
+            const bookingDate = new Date(booking.start_time);
+            const bookingDateStr = bookingDate.toISOString().split('T')[0];
+            return bookingDateStr === formData.tanggal;
+          }
+          
+          return false;
+        });
+        
+        setExistingBookings(filteredBookings);
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+        setExistingBookings([]);
+      }
+    };
+
+    fetchBookings();
+  }, [formData.room_name, formData.tanggal]);
+
   const handleSubmit = async () => {
     // Ensure SPK file is provided
     if (!formData.spk_file) {
@@ -218,14 +234,7 @@ const BookingForm = () => {
         const startTime = formData.start_time || formatDateTime(formData.tanggal, formData.jamMulai);
         const endTime = formData.end_time || formatDateTime(formData.tanggal, formData.jamSelesai);
 
-        // Validate time with new rules: 45 minutes buffer for same-day bookings
-        const timeError = validateBookingTime(formData.tanggal, formData.jamMulai);
-        if (timeError) {
-          setErrors({ submit: timeError });
-          return;
-        }
-
-        // Client-side guard: end > start
+        // Client-side guard: start must be >= now and end > start
         const now = new Date();
         const toDateObj = (s) => {
           // s like 'YYYY-MM-DD HH:mm:ss' local
@@ -236,43 +245,46 @@ const BookingForm = () => {
         };
         const startDate = toDateObj(startTime);
         const endDate = toDateObj(endTime);
-        
+        if (startDate < now) {
+          setErrors({ submit: 'Waktu mulai harus setelah waktu sekarang' });
+          return;
+        }
         if (!(endDate > startDate)) {
           setErrors({ submit: 'Waktu selesai harus lebih besar dari waktu mulai' });
           return;
         }
 
-        // Check for conflicts with existing bookings (with 45 minutes buffer)
-        try {
-          // Get all existing bookings for this room
-          const existingBookings = await meetingRoomAPI.getBookings({ room_name: formData.room_name });
-          
-          // Check if new booking conflicts with existing bookings (considering buffer)
-          const hasConflict = existingBookings.some(booking => {
-            if (booking.status === 'canceled') return false;
-            
-            const existingStart = toDateObj(booking.start_time);
-            const existingEnd = toDateObj(booking.end_time);
-            // Add 45 minutes buffer after existing meeting ends
-            const existingEndWithBuffer = new Date(existingEnd.getTime() + 45 * 60 * 1000);
-            
-            // Check for overlap: new booking overlaps with existing booking + buffer
-            const overlaps = (
-              (startDate >= existingStart && startDate < existingEndWithBuffer) ||
-              (endDate > existingStart && endDate <= existingEndWithBuffer) ||
-              (startDate <= existingStart && endDate >= existingEndWithBuffer)
-            );
-            
-            return overlaps;
-          });
-          
-          if (hasConflict) {
-            setErrors({ submit: 'Waktu booking bentrok dengan jadwal meeting lain. Silakan pilih waktu lain.' });
+        // Validasi range jam 08:30 - 17:30
+        if (formData.tanggal && formData.jamMulai) {
+          const startTimeError = validateBookingTime(formData.tanggal, formData.jamMulai);
+          if (startTimeError) {
+            setErrors({ submit: startTimeError });
             return;
           }
-        } catch (error) {
-          console.error('Error checking availability:', error);
-          // Continue with booking if availability check fails (backend will handle it)
+        }
+        
+        if (formData.tanggal && formData.jamSelesai) {
+          const endTimeError = validateBookingTime(formData.tanggal, formData.jamSelesai);
+          if (endTimeError) {
+            setErrors({ submit: endTimeError });
+            return;
+          }
+        }
+
+        // Check booking conflict dengan buffer 45 menit
+        if (formData.room_name && formData.tanggal && formData.jamMulai && formData.jamSelesai) {
+          const conflictCheck = checkBookingConflict(
+            existingBookings,
+            formData.room_name,
+            formData.tanggal,
+            formData.jamMulai,
+            formData.jamSelesai
+          );
+
+          if (conflictCheck.hasConflict) {
+            setErrors({ submit: conflictCheck.message });
+            return;
+          }
         }
 
         // Prepare data for backend

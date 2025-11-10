@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import FormInput from '../../components/FormInput';
 import meetingRoomAPI from '../../services/api';
-import { getCurrentDate, getMinTime, validateBookingDate, getMinBookingDate, compareTime, validateBookingTime, getMinBookingTime } from '../../utils/formatDate';
+import { getCurrentDate, getMinTime, validateBookingDate, getMinBookingDate, compareTime, validateBookingTime, getMinBookingTime, getMaxBookingTime, checkBookingConflict } from '../../utils/formatDate';
 
 const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cluster, setCluster] = useState('');
+  const [existingBookings, setExistingBookings] = useState([]);
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -22,6 +23,64 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
 
     fetchRooms();
   }, []);
+
+  // Fetch existing bookings saat room_name atau tanggal berubah
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (!formData.room_name || !formData.tanggal) {
+        setExistingBookings([]);
+        return;
+      }
+
+      try {
+        // Fetch bookings untuk tanggal tertentu
+        const bookings = await meetingRoomAPI.getBookings({
+          date: formData.tanggal
+        });
+        
+        // Filter bookings untuk ruangan yang sama dan status yang relevan
+        const filteredBookings = (bookings || []).filter(booking => {
+          // Hanya cek booking di ruangan yang sama
+          if (booking.room_name !== formData.room_name) return false;
+          
+          // Skip canceled meetings
+          if (booking.status === 'canceled') return false;
+          
+          // Pastikan booking di tanggal yang sama
+          if (booking.start_time) {
+            const bookingDate = new Date(booking.start_time);
+            const bookingDateStr = bookingDate.toISOString().split('T')[0];
+            return bookingDateStr === formData.tanggal;
+          }
+          
+          return false;
+        });
+        
+        setExistingBookings(filteredBookings);
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+        setExistingBookings([]);
+      }
+    };
+
+    fetchBookings();
+  }, [formData.room_name, formData.tanggal]);
+
+  // Clear conflict errors saat room_name atau tanggal berubah
+  useEffect(() => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      // Clear conflict-related errors
+      if (newErrors.jamMulai && newErrors.jamMulai.includes('bentrok')) {
+        delete newErrors.jamMulai;
+      }
+      if (newErrors.jamSelesai && newErrors.jamSelesai.includes('bentrok')) {
+        delete newErrors.jamSelesai;
+      }
+      return newErrors;
+    });
+  }, [formData.room_name, formData.tanggal]);
+
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     
@@ -89,9 +148,16 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
           }
         }
         
-        // Validate jam selesai > jam mulai
+        // Validate jam selesai > jam mulai dan dalam range 08:30 - 17:30
         if (jamMulai && jamSelesai) {
-          if (compareTime(jamSelesai, jamMulai) <= 0) {
+          // Validasi range jam selesai
+          const endTimeError = validateBookingTime(formData.tanggal, jamSelesai);
+          if (endTimeError) {
+            setErrors(prev => ({
+              ...prev,
+              jamSelesai: endTimeError
+            }));
+          } else if (compareTime(jamSelesai, jamMulai) <= 0) {
             setErrors(prev => ({
               ...prev,
               jamSelesai: 'Jam selesai harus lebih dari jam mulai'
@@ -101,6 +167,40 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
             setErrors(prev => {
               const newErrors = { ...prev };
               delete newErrors.jamSelesai;
+              return newErrors;
+            });
+          }
+        }
+
+        // Check booking conflict dengan buffer 45 menit
+        if (formData.room_name && formData.tanggal && jamMulai && jamSelesai) {
+          const conflictCheck = checkBookingConflict(
+            existingBookings,
+            formData.room_name,
+            formData.tanggal,
+            jamMulai,
+            jamSelesai
+          );
+
+          if (conflictCheck.hasConflict) {
+            // Set error untuk jamMulai atau jamSelesai tergantung field yang diubah
+            setErrors(prev => ({
+              ...prev,
+              [name === 'jamMulai' ? 'jamMulai' : 'jamSelesai']: conflictCheck.message
+            }));
+          } else {
+            // Clear conflict error jika tidak ada konflik
+            setErrors(prev => {
+              const newErrors = { ...prev };
+              // Hanya clear jika error tersebut adalah conflict message
+              if (newErrors.jamMulai === conflictCheck.message || 
+                  (newErrors.jamMulai && newErrors.jamMulai.includes('bentrok'))) {
+                delete newErrors.jamMulai;
+              }
+              if (newErrors.jamSelesai === conflictCheck.message || 
+                  (newErrors.jamSelesai && newErrors.jamSelesai.includes('bentrok'))) {
+                delete newErrors.jamSelesai;
+              }
               return newErrors;
             });
           }
@@ -179,10 +279,31 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
       }
     }
     
-    // Validate time logic - jam selesai harus lebih besar dari jam mulai
+    // Validate time logic - jam selesai harus lebih besar dari jam mulai dan dalam range 08:30 - 17:30
+    if (formData.jamSelesai) {
+      const endTimeError = validateBookingTime(formData.tanggal, formData.jamSelesai);
+      if (endTimeError) {
+        newErrors.jamSelesai = endTimeError;
+      }
+    }
     if (formData.jamMulai && formData.jamSelesai) {
       if (compareTime(formData.jamSelesai, formData.jamMulai) <= 0) {
         newErrors.jamSelesai = 'Jam selesai harus lebih dari jam mulai';
+      }
+    }
+
+    // Check booking conflict dengan buffer 45 menit
+    if (formData.room_name && formData.tanggal && formData.jamMulai && formData.jamSelesai) {
+      const conflictCheck = checkBookingConflict(
+        existingBookings,
+        formData.room_name,
+        formData.tanggal,
+        formData.jamMulai,
+        formData.jamSelesai
+      );
+
+      if (conflictCheck.hasConflict) {
+        newErrors.jamMulai = conflictCheck.message;
       }
     }
     
@@ -316,7 +437,7 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
             />
             {!errors.tanggal && !formData.tanggal && (
               <p className="text-sm text-gray-500 mt-1 mb-2">
-                ⓘ Booking hanya tersedia untuk hari kerja (Senin-Jumat). Weekend tidak dapat dibooking. Untuk booking hari ini, waktu mulai minimal 45 menit dari sekarang.
+                ⓘ Booking hanya tersedia untuk hari kerja (Senin-Jumat). Weekend tidak dapat dibooking. Waktu booking tersedia dari 08:30 - 17:30. Untuk booking hari ini, waktu mulai minimal 45 menit dari sekarang.
               </p>
             )}
           </div>
@@ -328,7 +449,8 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
             onChange={handleChange}
             required
             error={errors.jamMulai}
-            min={formData.tanggal ? getMinBookingTime(formData.tanggal) : "08:00"}
+            min={formData.tanggal ? getMinBookingTime(formData.tanggal) : "08:30"}
+            max={getMaxBookingTime()}
           />
           <FormInput
             label="Jam Selesai"
@@ -338,6 +460,8 @@ const Step1InfoDasar = ({ formData, setFormData, errors, setErrors }) => {
             onChange={handleChange}
             required
             error={errors.jamSelesai}
+            min={formData.jamMulai || "08:30"}
+            max={getMaxBookingTime()}
           />
           <FormInput
             label="Jumlah Peserta"
